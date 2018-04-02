@@ -1,4 +1,12 @@
 defmodule Quadratics do
+  @doc """
+    a, b and c will always come from this equation: ax^2 + bx + c = 0
+    returns a string with binomial factors
+
+    examples:
+    factors(1, 7, 12) -> "(x + 3)(x + 4)"
+    factors(2, 8, 8) -> "(x + 2)(x + 2)"
+  """
   def factors(a, b, c) when a != 0 and c != 0 do
     positions = [a, b, c]
     |> Simplify.simplify()
@@ -54,6 +62,11 @@ defmodule Simplify do
     |> Enum.map(&Kernel.trunc/1)
   end
 
+  @doc """
+    factors out the negative so a will be positive
+
+    example: [-1, 2, 3] -> [1, -2, -3]
+  """
   defp factor_negative ([a, b, c]) do
     cond do
       a < 0 -> Enum.map([a, b, c], &(&1 * -1))
@@ -61,6 +74,11 @@ defmodule Simplify do
     end
   end
 
+  @doc """
+    devides out greatest common factor
+
+    example: [2, 4, 6] -> [1, 2, 3]
+  """
   defp gcf(values, min) when min == 0 do
     values
   end
@@ -74,6 +92,7 @@ defmodule Simplify do
 end
 
 defmodule Factors do
+
   def factors([a, b, c]) do
     case special_numbers(a*c, abs(a*c), b) do
       {:error, message} -> message
@@ -81,6 +100,17 @@ defmodule Factors do
     end
   end
 
+  @doc """
+    special numbers(sn_one and sn_two) are factors of a*c that add to b
+    sometimes, this condition connot be met, this indicates that the quadratic cannot be factored
+
+    n = a*c
+    f = a pottential factor of n, starting at abs(n) and going down by one until it passes -abs(n)
+
+    example: x^2 + 7x + 12 ->
+    sn_one = 3
+    son_two = 4
+  """
   def special_numbers(n, f, b) when f < abs(n) * -1 do
     {:error, "cannot be factored"}
   end
@@ -93,6 +123,19 @@ defmodule Factors do
     special_numbers(n, f - 1, b)
   end
 
+  @doc """
+    the four positions refer to the coffeficiants and constants of the binomials:
+    (1x + 2)(3x + 4)
+
+    they are calculated with the following equations:
+    p1 * p3 = a (p1 and p3 have to be factors of a)
+    p2 * p4 = c (p2 and p4 have to be factors of c)
+    p1 * p4 = sn_one (p1 and p4 have to be factors of sn_one)
+    p2 * p3 = sn_two (p2 and p3 have to be factors of sn_two)
+
+    p1 and p3 will always be positive but,
+    p2 and p4 can be positive or negative so both cases have to be checked
+  """
   def positions(a, c, sn_one, sn_two) do
     p1 = p1(a, sn_one, abs(a))
     p2 = p2(c, sn_two, abs(c))
@@ -102,6 +145,11 @@ defmodule Factors do
     [p1, p2, p3, p4]
   end
 
+   @doc """
+    checks every possible value for p1 starting at a and going down until one
+    chekcs using equations stated above
+    same process for p3
+   """
   def p1(a, sn_one, possible) when rem(a, possible) == 0 and rem(sn_one, possible) == 0 do
     possible
   end
@@ -110,6 +158,12 @@ defmodule Factors do
     p1(a, sn_one, possible - 1)
   end
 
+  @doc """
+      has to check whether p2 is positive or negative
+      does this with the following equation: p2 * p3 = sn_two
+      since p3 is always positive, p2 and sn_two have to have the same sign (p2 * sn_two > 0)
+      same process for p4
+    """
   def p2(c, sn_two, possible) do
     positive = case rem(c, possible) == 0 and rem(sn_two, possible) == 0 and sn_two * possible > 0 do
       true -> true
