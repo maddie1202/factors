@@ -1,56 +1,60 @@
 defmodule Quadratics do
-  @doc """
-    a, b and c will always come from this equation: ax^2 + bx + c = 0
-    returns a string with binomial factors
+  @moduledoc """
+  Contains functions for interpreting quadratics in the form ax^2 + bx + c.
+  """
 
-    examples:
-    factors(1, 7, 12) -> "(x + 3)(x + 4)"
+  @doc """
+  Returns a string with the binomial factors of a given quadratic.
+
+  ## Parameters
+
+  - `a` - Coefficient of the 2nd degree term.
+  - `b` - Coefficient of the 1st degree term.
+  - `c` - Constant term.
+
+  ## Examples
+
+    factors(1, 7, 12) -> "(x + 4)(x + 3)"
     factors(2, 8, 8) -> "(x + 2)(x + 2)"
   """
   def factors(a, b, c) when a != 0 and c != 0 do
     positions = [a, b, c]
-    |> Simplify.simplify()
-    |> Factors.factors()
+                |> Simplify.simplify()
+                |> Factors.factors()
 
-   case positions do
-      "cannot be factored" -> "cannot be factored"
-      other -> clean_up(positions)
+    # TODO don't use a hardcoded string.
+    case positions do
+      "cannot be factored" ->
+        "cannot be factored"
+
+      other ->
+        clean_up(positions)
     end
 
   end
 
+  @doc """
+  Formats `positions` as binomials in a human-readable format and returns the
+  result as a string.
+  """
   def clean_up(positions) do
-
     [p1, p2, p3, p4] = positions
 
-    operator1 = case p2 > 0 do
-      true -> "+"
-      false -> "-"
-    end
-
-    operator2 = case p4 > 0 do
-      true -> "+"
-      false -> "-"
-    end
+    operator1 = if (p2 > 0), do: "+", else: "-"
+    operator2 = if (p4 > 0), do: "+", else: "-"
 
     positions = positions
-    |> Enum.map(&abs(&1)) #because the operators are defined above
-    |> Enum.map(&Integer.to_string()/1)
+                |> Enum.map(&abs(&1)) # The operators are already defined above.
+                |> Enum.map(&Integer.to_string()/1)
 
     [p1, p2, p3, p4] = positions
 
-    #removes unecessary coefficiant of 1
-    p1 = case p1 do
-      "1" -> ""
-      other -> p1
-    end
+    # Hide any coefficients of 1.
+    if (p1 == "1"), do: p1 = ""
+    if (p3 == "1"), do: p3 = ""
 
-    p3 = case p3 do
-      "1" -> ""
-      other -> p3
-    end
-
-     "(" <> p1 <> "x " <> operator1 <> " " <> p2 <> ")(" <> p3 <> "x " <> operator2 <> " " <> p4 <> ")"
+    # Return the factors in the form (ax + b)(cx + d).
+    "(#{p1}x #{operator1} #{p2})(#{p3}x #{operator2} #{p4})"
   end
 end
 
@@ -58,7 +62,7 @@ defmodule Simplify do
   def simplify(values) when is_list(values) do
     values
     |> factor_negative()
-    |> gcf(abs(Enum.min(values)))
+    |> gcf()
     |> Enum.map(&Kernel.trunc/1)
   end
 
@@ -69,144 +73,205 @@ defmodule Simplify do
   """
   defp factor_negative ([a, b, c]) do
     cond do
-      a < 0 -> Enum.map([a, b, c], &(&1 * -1))
-      a > 0 -> [a, b, c]
+      a < 0 ->
+        Enum.map([a, b, c], &(&1 * -1))
+
+      a > 0 ->
+        [a, b, c]
+
+      # TODO: You are missing a `true ->` clause. The function throws an error
+      #       if `a` == 0. Either add a header guard and don't use a `cond`
+      #       statement, or add a `true ->` clause.
+      #
+      # Examples:
+      #
+      #  defp factor_negative ([a, b, c]) when a != 0 do
+      #    if (a < 0) do
+      #        Enum.map([a, b, c], &(&1 * -1))
+      #    else # when a >= 0
+      #        [a, b, c]
+      #    end
+      #  end
+      #
+      #  OR
+      #
+      #  defp factor_negative ([a, b, c]) do
+      #    cond do
+      #      a < 0 ->
+      #        Enum.map([a, b, c], &(&1 * -1))
+      #
+      #      a > 0 ->
+      #        [a, b, c]
+      #
+      #      true ->
+      #        # ...
+      #    end
+      #  end
     end
   end
 
-  @doc """
-    devides out greatest common factor
 
-    example: [2, 4, 6] -> [1, 2, 3]
-  """
-  defp gcf(values, min) when min == 0 do
+  defp gcf(values) when is_list(values) do
+    min = abs(Enum.min(values))
+
+    do_gcf(values, min)
+  end
+
+  # Divides out the greatest common factor.
+  # Example: [2, 4, 6] -> [1, 2, 3]
+  defp do_gcf(values, min) when is_list(values) and min == 0 do
     values
   end
 
-  defp gcf(values, min) do
-    case Enum.all?(values, &(rem(&1, min) == 0)) do
-      true -> Enum.map(values, &(&1/min))
-      false -> gcf(values, min - 1)
+  defp do_gcf(values, min) when is_list(values) do
+    if ( Enum.all?(values, &(rem(&1, min) == 0)) ) do
+      Enum.map(values, &(&1/min))
+    else
+      do_gcf(values, min - 1)
     end
   end
 end
 
 defmodule Factors do
+  @moduledoc """
+  Contains functions for factoring quadratics in the form ax^2 + bx + c.
+  """
 
+  @doc """
+  Returns the coefficients and constants of a quadratic's factors as a list in
+  the form `[p1, p2, p3, p4]`, where each value is positioned relative to its
+  human-readable form.
+
+  ie. [p1, p2, p3, p4] corresponds to (`p1`*x + `p2`)(`p3`*x + `p4`)
+
+  ## Parameters
+
+  - `a` - Coefficient of the 2nd degree term.
+  - `b` - Coefficient of the 1st degree term.
+  - `c` - Constant term.
+
+  ## Examples
+
+  For the quadratic x^2 + 7x + 12:
+
+    iex> Factors.factors([1, 7, 12])
+    [1, 4, 1, 3]
+
+  For the quadratic 6x^2 + 5x - 6:
+
+    iex> Factors.factors([6, 5, -6])
+    [2, 3, 3, -2]
+  """
   def factors([a, b, c]) do
-    case special_numbers(a*c, abs(a*c), b) do
-      {:error, message} -> message
-      {sn_one, sn_two} -> positions(a, c, sn_one, sn_two)
+    case special_numbers([a, b, c]) do
+      {:error, message} ->
+        message
+
+      {sn_one, sn_two} ->
+        positions(a, c, sn_one, sn_two)
     end
   end
 
   @doc """
-    special numbers(sn_one and sn_two) are factors of a*c that add to b
-    sometimes, this condition connot be met, this indicates that the quadratic cannot be factored
+    Special numbers are factors of a*c and sum to b. If there are no numbers
+    that meet this criteria, the quadratic cannot be factored and an error will
+    be returned.
 
-    n = a*c
-    f = a pottential factor of n, starting at abs(n) and going down by one until it passes -abs(n)
+    Returns special numbers in the form `{sn_one, sn_two}`.
 
-    example: x^2 + 7x + 12 ->
-    sn_one = 3
-    son_two = 4
+    ## Parameters
+
+    - `a` - Coefficient of the 2nd degree term.
+    - `b` - Coefficient of the 1st degree term.
+    - `c` - Constant term.
+
+    ## Examples
+
+    For the quadratic x^2 + 7x + 12:
+
+      iex> Factors.special_numbers([1, 7, 12])
+      {3, 4}
+
+    ## Implementation details for private function `do_special_numbers`
+
+    - `n` - The product of `a` and `c` in a given quadratic.
+    - `f` - A potential factor of `n`, starting at `abs(n)` and decrementing by
+            one until `f` passes `-abs(n)`.
   """
-  def special_numbers(n, f, b) when f < abs(n) * -1 do
+  def special_numbers([a, b, c]) do
+    do_special_numbers(a*c, abs(a*c), b)
+  end
+
+  defp do_special_numbers(n, f, b) when f < abs(n) * -1 do
     {:error, "cannot be factored"}
   end
 
-  def special_numbers(n, f, b) when f != 0 and rem(n, f) == 0 and n/f + f == b do
+  defp do_special_numbers(n, f, b) when f != 0 and rem(n, f) == 0 and n/f + f == b do
     {Kernel.trunc(n/f), f}
   end
 
-  def special_numbers(n, f, b) do
-    special_numbers(n, f - 1, b)
+  defp do_special_numbers(n, f, b) do
+    do_special_numbers(n, f - 1, b)
   end
 
   @doc """
-    the four positions refer to the coffeficiants and constants of the binomials:
-    (1x + 2)(3x + 4)
+    Returns the coefficients and constants of a quadratic's factors as a list in
+    the form `[p1, p2, p3, p4]`, where each value is positioned relative to its
+    human-readable form.
 
-    they are calculated with the following equations:
-    p1 * p3 = a (p1 and p3 have to be factors of a)
-    p2 * p4 = c (p2 and p4 have to be factors of c)
-    p1 * p4 = sn_one (p1 and p4 have to be factors of sn_one)
-    p2 * p3 = sn_two (p2 and p3 have to be factors of sn_two)
+    ie. [p1, p2, p3, p4] corresponds to (`p1`*x + `p2`)(`p3`*x + `p4`)
 
-    p1 and p3 will always be positive but,
-    p2 and p4 can be positive or negative so both cases have to be checked
+    ## Implementation details
+
+    Each position is calculated with the following equations:
+
+    1. p1 * p3 = a (p1 and p3 have to be factors of a)
+    2. p2 * p4 = c (p2 and p4 have to be factors of c)
+    3. p1 * p4 = sn_one (p1 and p4 have to be factors of sn_one)
+    4. p2 * p3 = sn_two (p2 and p3 have to be factors of sn_two)
+
+    `p1` and `p3` will always be positive, but `p2` and `p4` can be either
+    positive or negative, so both cases must be checked.
+
+    `p1` and `p3` use the same method, just as `p2` and `p4` do.
   """
   def positions(a, c, sn_one, sn_two) do
-    p1 = p1(a, sn_one, abs(a))
-    p2 = p2(c, sn_two, abs(c))
-    p3 = p3(a, sn_two, abs(a))
-    p4 = p4(c, sn_one, abs(c))
+    p1 = foil_first(a, sn_one, abs(a))
+    p2 = foil_last(c, sn_two, abs(c))
+    p3 = foil_first(a, sn_two, abs(a))
+    p4 = foil_last(c, sn_one, abs(c))
 
     [p1, p2, p3, p4]
   end
 
-   @doc """
-    checks every possible value for p1 starting at a and going down until one
-    chekcs using equations stated above
-    same process for p3
-   """
-  def p1(a, sn_one, possible) when rem(a, possible) == 0 and rem(sn_one, possible) == 0 do
+  # Checks every possible value for `p1`, starting at `a` and decrementing until
+  # `possible` reaches 1. Checks using equations as explained in the docs for
+  # Factors.positions/4.
+  defp foil_first(a, sn_one, possible) when rem(a, possible) == 0 and rem(sn_one, possible) == 0 do
     possible
   end
 
-  def p1(a, sn_one, possible) do
-    p1(a, sn_one, possible - 1)
+  defp foil_first(a, sn_one, possible) do
+    foil_first(a, sn_one, possible - 1)
   end
 
-  @doc """
-      has to check whether p2 is positive or negative
-      does this with the following equation: p2 * p3 = sn_two
-      since p3 is always positive, p2 and sn_two have to have the same sign (p2 * sn_two > 0)
-      same process for p4
-    """
-  def p2(c, sn_two, possible) do
-    positive = case rem(c, possible) == 0 and rem(sn_two, possible) == 0 and sn_two * possible > 0 do
-      true -> true
-      false -> false
-    end
+  # Must check whether `p2` is positive or negative. Checks with the equation:
+  # `p2 * p3 = sn_two`. Because `p3` is always positive, `p2` and `sn_two` must
+  # have the same sign (`p2 * sn_two > 0`)
+  defp foil_last(c, sn_two, possible) do
+    positive = (rem(c, possible) == 0 and rem(sn_two, possible) == 0 and sn_two * possible > 0)
 
-    negative = case rem(c, possible) == 0 and rem(sn_two, possible) == 0 and sn_two * possible < 0 do
-      true -> true
-      false -> false
-    end
+    negative = (rem(c, possible) == 0 and rem(sn_two, possible) == 0 and sn_two * possible < 0)
 
     cond do
-      positive == true -> possible
-      negative  == true -> possible * -1
-      true -> p2(c, sn_two, possible-1)
+      positive ->
+        possible
+
+      negative ->
+        possible * -1
+
+      true ->
+        foil_last(c, sn_two, possible - 1)
     end
   end
-
-  def p3(a, sn_two, possible) when rem(a, possible) == 0 and rem(sn_two, possible) == 0 do
-    possible
-  end
-
-  def p3(a, sn_two, possible) do
-    p3(a, sn_two, possible - 1)
-  end
-
-  def p4(c, sn_one, possible) do
-    positive = case rem(c, possible) == 0 and rem(sn_one, possible) == 0 and sn_one * possible > 0 do
-      true -> true
-      false -> false
-    end
-
-    negative = case rem(c, possible) == 0 and rem(sn_one, possible) == 0 and sn_one * possible < 0 do
-      true -> true
-      false -> false
-    end
-
-    cond do
-      positive -> possible
-      negative -> possible * -1
-      true -> p2(c, sn_one, possible-1)
-    end
-  end
-
-
 end
