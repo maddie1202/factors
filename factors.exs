@@ -57,17 +57,22 @@ defmodule Reader do
 
   # add "+" to the beginning of term if no operator is present
   defp add_operator_to_beginning(string) when is_binary(string) do
-    unless(String.starts_with?(string, ["+", "-"])) do
-      string = "+ " <> string
+    string = unless(String.starts_with?(string, ["+", "-"])) do
+      "+ " <> string
+
+      else
+        string
     end
 
-    string
   end
 
   # add coefficient of one if no coefficient is present
   defp add_coefficient([operator, term]) when is_binary(term) do
-    if(String.starts_with?(term, "x")) do
-      term = "1" <> term
+    term = if(String.starts_with?(term, "x")) do
+      "1" <> term
+
+      else
+        term
     end
 
     [operator, term]
@@ -95,11 +100,7 @@ defmodule Reader do
         variable <> " term not found"
     end
 
-    if(operator == "-") do
-      coefficient = coefficient * -1
-    end
-
-    coefficient
+    coefficient = if (operator == "-"), do: coefficient * -1, else: coefficient
   end
 
   @doc """
@@ -197,8 +198,8 @@ defmodule Quadratics do
     [p1, p2, p3, p4] = positions
 
     # Hide any coefficients of 1.
-    if (p1 == "1"), do: p1 = ""
-    if (p3 == "1"), do: p3 = ""
+    p1 = if (p1 == "1"), do: "", else: p1
+    p3 = if (p3 == "1"), do: "", else: p3
 
     # Return the factors in the form (ax + b)(cx + d).
     "(#{p1}x #{operator1} #{p2})(#{p3}x #{operator2} #{p4})"
@@ -213,11 +214,9 @@ defmodule Simplify do
     |> Enum.map(&Kernel.trunc/1)
   end
 
-  @doc """
-    factors out the negative so a will be positive
 
-    example: [-1, 2, 3] -> [1, -2, -3]
-  """
+  # factors out the negative so a will be positive
+  # example: [-1, 2, 3] -> [1, -2, -3]
   defp factor_negative ([a, b, c]) do
     cond do
       a < 0 ->
@@ -229,7 +228,6 @@ defmodule Simplify do
       true -> {:error, "a cannot equal 0"}
     end
   end
-
 
   defp gcf(values) when is_list(values) do
     min = abs(Enum.min(values))
@@ -322,7 +320,7 @@ defmodule Factors do
     do_special_numbers(a*c, abs(a*c), b)
   end
 
-  defp do_special_numbers(n, f, b) when f < abs(n) * -1 do
+  defp do_special_numbers(n, f, _) when f < abs(n) * -1 do
     {:error, "cannot be factored"}
   end
 
