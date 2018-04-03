@@ -1,3 +1,124 @@
+defmodule Reader do
+  @moduledoc """
+  To extract values a, b and c from a quadractic equation given a string
+  """
+
+  @doc """
+  takes a quadratic equation in form ax^2 + bx + c as a string and returns values a, b and c in a list
+
+  ## Parameters
+
+  - `quadratic` - string with a quadratic equation in th form ax^2 + bx + c
+
+  ## Examples
+
+  - "2x^2 + 7x + 6" -> [2, 7, 6]
+  - "7x + 6 + 2x^2" -> [2, 7, 6]
+  """
+  def string_to_coefficients(string) when is_binary(string) do
+    terms = string
+            |> String.trim()
+            |> add_operator_to_beginning() #if the first term is positive, by convention there won't be a "+"
+            |> String.replace("+", " + ")
+            |> String.replace("-", " - ")
+            |> String.split()
+            |> Enum.chunk_every(2) #creates a list of terms: [operator, term]
+            |> Enum.map(&(add_coefficient(&1))) #if the coefficient is 1, by convention there won't be a 1
+
+    a_term = Enum.find(terms, &(a_b_or_c?(&1) == "a"))
+
+    a = case a_term do
+      nil ->
+        "x^2 term not found"
+      a_term ->
+        extract_coefficient(a_term, "x^2")
+    end
+
+    b_term = Enum.find(terms, &(a_b_or_c?(&1) == "b"))
+
+    b = case b_term do
+      nil ->
+        "x term not found"
+      b_term ->
+        extract_coefficient(b_term, "x")
+    end
+
+    c_term = Enum.find(terms, &(a_b_or_c?(&1) == "c"))
+
+    c = case c_term do
+      nil ->
+        "constant term not found"
+      c_term ->
+        extract_coefficient(c_term, "constant")
+    end
+
+    [a, b, c]
+  end
+
+  # add "+" to the beginning of term if no operator is present
+  defp add_operator_to_beginning(string) when is_binary(string) do
+    unless(String.starts_with?(string, ["+", "-"])) do
+      string = "+ " <> string
+    end
+
+    string
+  end
+
+  # add coefficient of one if no coefficient is present
+  defp add_coefficient([operator, term]) when is_binary(term) do
+    if(String.starts_with?(term, "x")) do
+      term = "1" <> term
+    end
+
+    [operator, term]
+  end
+
+  defp a_b_or_c? ([_, term]) do
+    cond do
+      String.contains?(term, "x^2") ->
+        "a"
+      String.contains?(term, "x") ->
+        "b"
+      true ->
+        "c"
+    end
+  end
+
+  # extracts the variable (exmaple: x or x^2)and returns the remainning coefficient
+  defp extract_coefficient([operator, term], variable) do
+    term = String.replace(term, variable, "")
+
+    coefficient = cond do
+      string_number?(term) ->
+        String.to_integer(term)
+      true ->
+        variable <> " term not found"
+    end
+
+    if(operator == "-") do
+      coefficient = coefficient * -1
+    end
+
+    coefficient
+  end
+
+  @doc """
+  returns false if a string contains anything other than numbers 0 to 9 or "-"
+
+  ## Examples
+  - "-1" -> true
+  - "1234" -> true
+  - "hello, world!" -> false
+  - "1m23hfs7-ew" -> false
+  """
+  def string_number?(string) when is_binary(string) do
+    string
+    |> to_charlist()
+    |> Enum.all?(&(&1 >= 48 and &1 <= 57 or &1 == 45))
+  end
+
+end
+
 defmodule Quadratics do
   @moduledoc """
   Contains functions for interpreting quadratics in the form ax^2 + bx + c.
@@ -22,15 +143,41 @@ defmodule Quadratics do
                 |> Simplify.simplify()
                 |> Factors.factors()
 
-    # TODO don't use a hardcoded string.
     case positions do
-      "cannot be factored" ->
-        "cannot be factored"
+       {:error, message} ->
+        message
 
       other ->
         clean_up(positions)
     end
 
+  end
+
+  @doc """
+  Returns a string with the binomial factors of a given quadratic.
+
+  ## Parameters
+
+  - `quadratic` - string containing a quadratic euqation in the form ax^2 + bx + c
+
+  ## Examples
+
+    factors(1, 7, 12) -> "(x + 4)(x + 3)"
+    factors(2, 8, 8) -> "(x + 2)(x + 2)"
+  """
+  def factors(quadratic) when is_binary(quadratic) do
+    [a, b, c] = Reader.string_to_coefficients(quadratic)
+
+    cond do
+      !is_integer(a) ->
+        "cannot be factored"
+      !is_integer(b) ->
+        "cannot be factored"
+      !is_integer(c) ->
+        "cannot be factored"
+      true ->
+        factors(a, b, c)
+    end
   end
 
   @doc """
@@ -79,34 +226,7 @@ defmodule Simplify do
       a > 0 ->
         [a, b, c]
 
-      # TODO: You are missing a `true ->` clause. The function throws an error
-      #       if `a` == 0. Either add a header guard and don't use a `cond`
-      #       statement, or add a `true ->` clause.
-      #
-      # Examples:
-      #
-      #  defp factor_negative ([a, b, c]) when a != 0 do
-      #    if (a < 0) do
-      #        Enum.map([a, b, c], &(&1 * -1))
-      #    else # when a >= 0
-      #        [a, b, c]
-      #    end
-      #  end
-      #
-      #  OR
-      #
-      #  defp factor_negative ([a, b, c]) do
-      #    cond do
-      #      a < 0 ->
-      #        Enum.map([a, b, c], &(&1 * -1))
-      #
-      #      a > 0 ->
-      #        [a, b, c]
-      #
-      #      true ->
-      #        # ...
-      #    end
-      #  end
+      true -> {:error, "a cannot equal 0"}
     end
   end
 
@@ -165,7 +285,7 @@ defmodule Factors do
   def factors([a, b, c]) do
     case special_numbers([a, b, c]) do
       {:error, message} ->
-        message
+        {:error, message}
 
       {sn_one, sn_two} ->
         positions(a, c, sn_one, sn_two)
