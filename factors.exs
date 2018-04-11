@@ -28,42 +28,41 @@ defmodule Reader do
     a_term = Enum.find(terms, &(a_b_or_c?(&1) == "a"))
 
     a = case a_term do
-      nil ->
-        "x^2 term not found"
-      a_term ->
-        extract_coefficient(a_term, "x^2")
-    end
+          nil ->
+            "x^2 term not found"
+
+          a_term ->
+            extract_coefficient(a_term, "x^2")
+        end
 
     b_term = Enum.find(terms, &(a_b_or_c?(&1) == "b"))
 
     b = case b_term do
-      nil ->
-        "x term not found"
-      b_term ->
-        extract_coefficient(b_term, "x")
-    end
+          nil ->
+            "x term not found"
+
+          b_term ->
+            extract_coefficient(b_term, "x")
+        end
 
     c_term = Enum.find(terms, &(a_b_or_c?(&1) == "c"))
 
     c = case c_term do
-      nil ->
-        "constant term not found"
-      c_term ->
-        extract_coefficient(c_term, "constant")
-    end
+          nil ->
+            "constant term not found"
+
+          c_term ->
+            extract_coefficient(c_term, "constant")
+        end
 
     [a, b, c]
   end
 
   # add "+" to the beginning of term if no operator is present
   defp add_operator_to_beginning(string) when is_binary(string) do
-    string = unless(String.starts_with?(string, ["+", "-"])) do
-      "+ " <> string
-
-      else
-        string
-    end
-
+    string =
+      unless(String.starts_with?(string, ["+", "-"])), do: "+ " <> string
+      else, do: strung
   end
 
   # add coefficient of one if no coefficient is present
@@ -82,8 +81,10 @@ defmodule Reader do
     cond do
       String.contains?(term, "x^2") ->
         "a"
+
       String.contains?(term, "x") ->
         "b"
+
       true ->
         "c"
     end
@@ -94,11 +95,12 @@ defmodule Reader do
     term = String.replace(term, variable, "")
 
     coefficient = cond do
-      string_number?(term) ->
-        String.to_integer(term)
-      true ->
-        variable <> " term not found"
-    end
+                    string_number?(term) ->
+                      String.to_integer(term)
+
+                    true ->
+                      variable <> " term not found"
+                  end
 
     coefficient = if (operator == "-"), do: coefficient * -1, else: coefficient
   end
@@ -172,10 +174,13 @@ defmodule Quadratics do
     cond do
       !is_integer(a) ->
         "cannot be factored"
+
       !is_integer(b) ->
         "cannot be factored"
+
       !is_integer(c) ->
         "cannot be factored"
+
       true ->
         factors(a, b, c)
     end
